@@ -46,7 +46,7 @@ $movies = array_slice($movies, $offset, $moviesPerPage);
                     <tr>
                         <td id="movieId"><?= $movie['id'] ?></td>
                         <td>
-                                <?= $movie['title'] ?>
+                            <?= htmlspecialchars($movie['title']) ?>
                         </td>
                         <td><?= $movie['release_year'] ?></td>
                         <td><?= $movie['format'] ?></td>

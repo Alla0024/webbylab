@@ -25,6 +25,17 @@ function parseMovieData($movieData)
 
     return $parsedMovies;
 }
+function checkValidYear($year)
+{
+    $min_year = 1850;
+    $max_year = 2023;
+
+    if (is_numeric($year) && $year >= $min_year && $year <= $max_year) {
+        return true;
+    } else {
+        return false;
+    }
+}
 
 $action = isset($_REQUEST['action']) ? $_REQUEST['action'] : 'default';
 
@@ -109,15 +120,28 @@ switch ($action) {
 
     case "update_movie":
         if ($_SERVER['REQUEST_METHOD'] === "POST") {
-            $movieId = isset($_POST['movie_id']) ? $_POST['movie_id'] : '';
-            $movieTitle = isset($_POST['movie_title']) ? $_POST['movie_title'] : '';
-            $releaseYear = isset($_POST['release_year']) ? $_POST['release_year'] : '';
-            $format = isset($_POST['format']) ? $_POST['format'] : '';
-            $actorId = isset($_POST['actor_ids']) ? $_POST['actor_ids'] : '';
+            $movieId = $_POST['movie_id'] ?: '';
+            $movieTitle = trim($_POST['movie_title']) ?: '';
+            $releaseYear = trim($_POST['release_year']) ?: '';
+            $format = $_POST['format'] ?: '';
+            $actorId = $_POST['actor_ids'] ?: '';
 
             if (empty($movieTitle) || empty($releaseYear) || empty($format) || empty($actorId)) {
                 http_response_code(400);
                 echo "Error: Please fill in all required fields.";
+                exit;
+            }
+
+
+            $valid_year = checkValidYear($releaseYear);
+            if (!$valid_year) {
+                http_response_code(400);
+                echo "Error: Invalid release year. Please enter a year between 1850 and 2023.";
+                exit;
+            }
+            if (Movie:: checkMovieExist($movieTitle, $releaseYear, $format)){
+                http_response_code(400);
+                echo "Movie already exists";
                 exit;
             }
 

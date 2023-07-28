@@ -7,6 +7,20 @@ $(document).ready(function () {
         $('#actorForm')[0].reset();
     });
 
+    function removeModalBackdrop() {
+        $('.modal-backdrop').remove();
+        $('body').removeClass('modal-open');
+    }
+
+    $('#closeActorBtn').click(function () {
+        $('#actorModal').modal('hide');
+        removeModalBackdrop();
+    });
+
+    $('#actorModal').on('hidden.bs.modal', function () {
+        removeModalBackdrop();
+    });
+
     $('.edit_actor').on('click', function () {
         var actorId = $(this).data('actor-id');
         $.ajax({
@@ -123,6 +137,10 @@ $(document).ready(function () {
                     });
                     var $hintText = $(".hint-text");
                     var entriesShown = actors.length;
+
+                    if (entriesShown > 10) {
+                        entriesShown = 10;
+                    }
                     $hintText.html('Showing <b>' + entriesShown + '</b> out of <b>' + totalActors + '</b> entries');
 
                     var $pagination = $(".pagination");
@@ -138,6 +156,8 @@ $(document).ready(function () {
                     $("#actorTable").html("<p>Error occurred while fetching data.</p>");
                 }
             });
+        } else {
+            location.reload();
         }
     });
 });

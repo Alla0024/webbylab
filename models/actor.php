@@ -77,7 +77,7 @@ class Actor
     {
         $mysqli = dbConnect();
         $searchValue = '%' . $searchValue . '%';
-        $stmt = $mysqli->prepare("SELECT * FROM actors WHERE id LIKE ? OR first_name LIKE ? OR last_name LIKE ?");
+        $stmt = $mysqli->prepare("SELECT * FROM actors WHERE id LIKE ? OR first_name LIKE ? OR last_name LIKE ? LIMIT 10");
         $stmt->bind_param("sss", $searchValue, $searchValue, $searchValue);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);

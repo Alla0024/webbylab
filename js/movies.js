@@ -7,6 +7,20 @@ $(document).ready(function () {
         $('#movieForm')[0].reset();
     });
 
+    function removeModalBackdrop() {
+        $('.modal-backdrop').remove();
+        $('body').removeClass('modal-open');
+    }
+
+    $('#closeMovieBtn').click(function () {
+        $('#movieModal').modal('hide');
+        removeModalBackdrop();
+    });
+
+    $('#movieModal').on('hidden.bs.modal', function () {
+        removeModalBackdrop();
+    });
+
     $('.edit').on('click', function () {
         var movieId = $(this).data('movie-id');
         var actor_name = $('#actor_name');
@@ -72,7 +86,7 @@ $(document).ready(function () {
                 }, 3000);
             },
             error: function (error) {
-                messageOutput.html('<div class="alert alert-danger">Error saving movie changes: ' + error.statusText + '</div>');
+                messageOutput.html('<div class="alert alert-danger">Error saving movie changes: ' + error.responseText + '</div>');
                 setTimeout(function () {
                     messageOutput.empty();
                 }, 3000);
@@ -142,6 +156,9 @@ $(document).ready(function () {
                     });
                     var $hintText = $(".hint-text");
                     var entriesShown = movies.length;
+                    if (entriesShown > 10) {
+                        entriesShown = 10;
+                    }
                     $hintText.html('Showing <b>' + entriesShown + '</b> out of <b>' + totalMovies + '</b> entries');
 
                     var $pagination = $(".pagination");
@@ -157,6 +174,8 @@ $(document).ready(function () {
                     $("#movieTable").html("<p>Error occurred while fetching data.</p>");
                 }
             });
+        } else {
+            location.reload();
         }
     });
     var importModal = $('#importModal');

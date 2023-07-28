@@ -565,3 +565,9 @@ table.table .avatar {
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     margin: 20px;
 }
+.table td {
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

@@ -1,7 +1,7 @@
 <?php
 $actors = Actor::getAllActors();
 
-$actorsPerPage = 15;
+$actorsPerPage = 10;
 $totalActors = count($actors);
 $totalPages = ceil($totalActors / $actorsPerPage);
 

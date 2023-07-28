@@ -2,10 +2,27 @@
 
 class Movie
 {
-    public static function insertMovie($title, $releaseYear, $format)
+    public static function checkMovieExist($title, $releaseYear, $format)
     {
         $mysqli = dbConnect();
 
+        $exist = false;
+        $stmt_check = $mysqli->prepare("SELECT id FROM movies WHERE title = ? AND release_year = ? AND format = ?");
+        $stmt_check->bind_param("sis", $title, $releaseYear, $format);
+        $stmt_check->execute();
+        $stmt_check->store_result();
+
+        if ($stmt_check->num_rows > 0) {
+            $exist = true;
+        }
+        return $exist;
+    }
+    public static function insertMovie($title, $releaseYear, $format)
+    {
+        $mysqli = dbConnect();
+        if (self::checkMovieExist($title, $releaseYear, $format)) {
+            return false;
+        }
         $stmt_check = $mysqli->prepare("SELECT id FROM movies WHERE title = ? AND release_year = ? AND format = ?");
         $stmt_check->bind_param("sis", $title, $releaseYear, $format);
         $stmt_check->execute();
@@ -23,7 +40,7 @@ class Movie
     }
 
 
-    public static function addMovie($movieTitle, $releaseYear, $format, $actorId)
+    public static function addMovie($movieTitle, $releaseYear, $format, $actorIds)
     {
         $mysqli = dbConnect();
         $stmt = $mysqli->prepare("INSERT INTO movies (title, release_year, format) VALUES (?, ?, ?)");
@@ -32,9 +49,11 @@ class Movie
 
         $movieId = $stmt->insert_id;
 
-        $stmt = $mysqli->prepare("INSERT INTO actor_movie (actor_id, movie_id) VALUES (?, ?)");
-        $stmt->bind_param("ii", $actorId, $movieId);
-        $stmt->execute();
+        $insertStmt = $mysqli->prepare("INSERT INTO actor_movie (actor_id, movie_id) VALUES (?, ?)");
+        foreach ($actorIds as $actorId) {
+            $insertStmt->bind_param("ii", $actorId, $movieId);
+            $insertStmt->execute();
+        }
     }
 
     public static function getAllMovies()
@@ -45,7 +64,7 @@ class Movie
                                         LEFT JOIN actor_movie am ON m.id = am.movie_id 
                                         LEFT JOIN actors a ON am.actor_id = a.id 
                                         GROUP BY m.id
-                                        ORDER BY m.title ASC");
+                                        ORDER BY m.title COLLATE utf8_unicode_ci ASC");
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
@@ -117,7 +136,8 @@ class Movie
                                            OR CONCAT(a.first_name, ' ', a.last_name) LIKE ? 
                                            OR m.release_year LIKE ? 
                                            OR m.format LIKE ?
-                                        GROUP BY m.id, m.title, m.release_year, m.format");
+                                        GROUP BY m.id, m.title, m.release_year, m.format
+                                        LIMIT 10");
         $stmt->bind_param("sssss", $searchValue, $searchValue, $searchValue, $searchValue, $searchValue);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);

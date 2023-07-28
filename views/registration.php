@@ -7,7 +7,7 @@ if (isset($_POST['submit'])) {
     $password2 = isset($_POST['password2']) ? ($_POST['password2']) : '';
     $phone = isset($_POST['phone']) ? $_POST['phone'] : '';
 
-    if (Valid::validateInput($username, '/^([a-zA-Z]+(?:(?! {2})[a-zA-Z\'\-])*[a-zA-Z]+)$|^([а-яА-ЯієїІЄЇґҐ]+(?:(?! {2})[а-яА-ЯієїІЄЇґҐ\'\-])*[а-яА-ЯієїІЄЇґҐ]+)$/', "Invalid name input.")) {
+    if (Valid::validateInput($username, '/^[a-zA-Zа-яА-ЯієїІЄЇґҐ\' _-]{4,20}$/', "Invalid name input.")) {
         array_push($error['errors'], "Invalid name input. <br>");
     }
     if (Valid::validateInput($email, '/^[a-zA-Z0-9\.\-_]{2,}@[a-zA-Z0-9\-_]+\.[a-z]{2,3}$/', "Invalid email input.")) {
