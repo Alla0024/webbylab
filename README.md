@@ -1,0 +1,40 @@
+# webbylab
+## PHP Version: 7.4.21
+## Apache Version: 2.4.46
+## MySQL Version: 5.7.34
+
+## Create the webbylab database
+```
+CREATE DATABASE IF NOT EXISTS webbylab;
+
+USE webbylab;
+
+CREATE TABLE IF NOT EXISTS users (
+id INT AUTO_INCREMENT PRIMARY KEY,
+username VARCHAR(100) NOT NULL,
+password VARCHAR(255) NOT NULL,
+email VARCHAR(255) NOT NULL UNIQUE,
+phone VARCHAR(20) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS actors (
+id INT AUTO_INCREMENT PRIMARY KEY,
+first_name VARCHAR(100) NOT NULL,
+last_name VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS movies (
+id INT AUTO_INCREMENT PRIMARY KEY,
+title VARCHAR(255) NOT NULL,
+release_year INT NOT NULL,
+format VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS actor_movie (
+id INT AUTO_INCREMENT PRIMARY KEY,
+actor_id INT NOT NULL,
+movie_id INT NOT NULL,
+FOREIGN KEY (actor_id) REFERENCES actors(id) ON DELETE CASCADE,
+FOREIGN KEY (movie_id) REFERENCES movies(id) ON DELETE CASCADE
+);
+```
