@@ -64,7 +64,7 @@ class Movie
                                         LEFT JOIN actor_movie am ON m.id = am.movie_id 
                                         LEFT JOIN actors a ON am.actor_id = a.id 
                                         GROUP BY m.id
-                                        ORDER BY m.title COLLATE utf8_unicode_ci ASC");
+                                        ORDER BY m.title COLLATE utf8mb4_unicode_ci ASC");
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
