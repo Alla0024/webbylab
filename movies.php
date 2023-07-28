@@ -13,8 +13,11 @@ function parseMovieData($movieData)
         $lines = explode("\n", $movie);
 
         foreach ($lines as $line) {
-            list($key, $value) = explode(": ", $line, 2);
-            $movieObj[strtolower(str_replace(" ", "_", trim($key)))] = trim($value);
+            $parts = explode(": ", $line, 2);
+            if (count($parts) === 2) {
+                list($key, $value) = $parts;
+                $movieObj[strtolower(str_replace(" ", "_", trim($key)))] = trim($value);
+            }
         }
 
         $parsedMovies[] = $movieObj;
@@ -62,22 +65,27 @@ switch ($action) {
             $moviesToInsert = parseMovieData($movieData);
 
             foreach ($moviesToInsert as $movieObj) {
-                $actorNames = explode(", ", $movieObj["stars"]);
+                if (isset($movieObj["title"]) && isset($movieObj["stars"]) && isset($movieObj["release_year"]) && isset($movieObj["format"])) {
+                    $actorNames = explode(", ", $movieObj["stars"]);
 
-                $movieId = Movie::insertMovie($movieObj["title"], $movieObj["release_year"], $movieObj["format"]);
+                    $movieId = Movie::insertMovie($movieObj["title"], $movieObj["release_year"], $movieObj["format"]);
+                    if ($movieId) {
+                        foreach ($actorNames as $actorName) {
+                            $actorFullNameParts = explode(" ", $actorName);
+                            $actorFirstName = $actorFullNameParts[0];
+                            $actorLastName = count($actorFullNameParts) > 1 ? $actorFullNameParts[1] : "";
 
-                foreach ($actorNames as $actorName) {
-                    $actorFullNameParts = explode(" ", $actorName);
-                    $actorFirstName = $actorFullNameParts[0];
-                    $actorLastName = count($actorFullNameParts) > 1 ? $actorFullNameParts[1] : "";
+                            $actorId = Actor::getOrCreateActor($actorFirstName, $actorLastName);
 
-                    $actorId = Actor::getOrCreateActor($actorFirstName, $actorLastName);
-
-                    Actor::insertActorsMovies($actorId, $movieId);
+                            Actor::insertActorsMovies($actorId, $movieId);
+                        }
+                        echo $movieObj["title"].  " imported successfully!<br>";
+                    }else {
+                        echo $movieObj["title"] . " already exists!<br>";
+                    }
                 }
-            }
-            echo "Movies imported successfully!";
 
+            }
         } else {
             echo "Invalid request for import_movies action.";
         }
@@ -101,11 +109,11 @@ switch ($action) {
 
     case "update_movie":
         if ($_SERVER['REQUEST_METHOD'] === "POST") {
-            $movieId = $_POST['movie_id'];
-            $movieTitle = $_POST['movie_title'];
-            $releaseYear = $_POST['release_year'];
-            $format = $_POST['format'];
-            $actorId = $_POST['actor_ids'];
+            $movieId = isset($_POST['movie_id']) ? $_POST['movie_id'] : '';
+            $movieTitle = isset($_POST['movie_title']) ? $_POST['movie_title'] : '';
+            $releaseYear = isset($_POST['release_year']) ? $_POST['release_year'] : '';
+            $format = isset($_POST['format']) ? $_POST['format'] : '';
+            $actorId = isset($_POST['actor_ids']) ? $_POST['actor_ids'] : '';
 
             if (empty($movieTitle) || empty($releaseYear) || empty($format) || empty($actorId)) {
                 http_response_code(400);

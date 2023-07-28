@@ -2,14 +2,26 @@
 
 class Movie
 {
-    function insertMovie($title, $releaseYear, $format)
+    public static function insertMovie($title, $releaseYear, $format)
     {
         $mysqli = dbConnect();
-        $stmt = $mysqli->prepare("INSERT INTO movies (title, release_year, format) VALUES (?, ?, ?)");
-        $stmt->bind_param("sis", $title, $releaseYear, $format);
-        $stmt->execute();
-        return $stmt->insert_id;
+
+        $stmt_check = $mysqli->prepare("SELECT id FROM movies WHERE title = ? AND release_year = ? AND format = ?");
+        $stmt_check->bind_param("sis", $title, $releaseYear, $format);
+        $stmt_check->execute();
+        $stmt_check->store_result();
+
+        if ($stmt_check->num_rows > 0) {
+            return false;
+        }
+
+        $stmt_insert = $mysqli->prepare("INSERT INTO movies (title, release_year, format) VALUES (?, ?, ?)");
+        $stmt_insert->bind_param("sis", $title, $releaseYear, $format);
+        $stmt_insert->execute();
+
+        return $stmt_insert->insert_id;
     }
+
 
     public static function addMovie($movieTitle, $releaseYear, $format, $actorId)
     {
@@ -88,7 +100,7 @@ class Movie
         $stmt->execute();
     }
 
-    public function searchMoviesAndActorsByTitleOrActor($searchValue)
+    public static function searchMoviesAndActorsByTitleOrActor($searchValue)
     {
         $mysqli = dbConnect();
         $searchValue = '%' . $searchValue . '%';
