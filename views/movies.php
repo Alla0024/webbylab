@@ -1,13 +1,16 @@
 <?php
-$movies = Movie::getAllMovies();
-
 $moviesPerPage = 10;
-$totalMovies = count($movies);
-$totalPages = ceil($totalMovies / $moviesPerPage);
-
 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+if (isset($_GET['search'])) {
+    $searchValue = $_GET['search'];
+    $movieData = Movie::searchMovies($searchValue, $page, $moviesPerPage);
+} else {
+    $movieData = Movie::getAllMovies($page, $moviesPerPage);
+}
+$movies = $movieData ['data'];
+$totalMovies = $movieData ['total_count'];
+$totalPages = ceil($totalMovies / $moviesPerPage);
 $offset = ($page - 1) * $moviesPerPage;
-$movies = array_slice($movies, $offset, $moviesPerPage);
 ?>
 <div class="container-xl">
     <div class="table-responsive">
@@ -15,14 +18,22 @@ $movies = array_slice($movies, $offset, $moviesPerPage);
             <div class="table-title">
                 <div class="row">
                     <div class="col-sm-5">
-                        <h2>List of movies</h2>
+                        <a href="index.php?action=movies"><h2>List of movies</h2></a>
                     </div>
                     <div class="col-sm-7">
-                        <a href="#" class="btn btn-secondary" data-toggle="modal" data-target="#movieModal"><i class="material-icons">&#xE147;</i> <span>Add New Movie</span></a>
-                        <a href="#" class="btn btn-secondary" id="importBtn"><i class="material-icons">&#xE24D;</i> <span>Import</span></a>
+                        <a href="javascript:;" class="btn btn-secondary" data-toggle="modal"
+                           data-target="#movieModal"><i class="material-icons">&#xE147;</i>
+                            <span>Add New Movie</span></a>
+                        <a href="javascript:;" class="btn btn-secondary" id="exportBtn">
+                            <i class="material-icons">cloud_download</i> <span>Export</span>
+                        </a>
+                        <a href="javascript:;" class="btn btn-secondary" id="importBtn">
+                            <i class="material-icons">cloud_upload</i> <span>Import</span>
+                        </a>
 
                         <div class="input-group">
-                            <input type="text" name="search" id="searchInput" class="form-control" placeholder="Enter your search term">
+                            <input type="text" name="search" id="searchInput" class="form-control" placeholder="Enter your search term"
+                                   value="<?php echo isset($searchValue) ? htmlspecialchars($searchValue) : ''; ?>">
                             <span class="input-group-icon"><i class="fas fa-search"></i></span>
                         </div>
 
@@ -50,10 +61,10 @@ $movies = array_slice($movies, $offset, $moviesPerPage);
                         </td>
                         <td><?= $movie['release_year'] ?></td>
                         <td><?= $movie['format'] ?></td>
-                        <td id="actorName"><?= $movie['actor_name'] ?></td>
+                        <td id="actorName"><?= $movie['actor_names'] ?></td>
                         <td id="actionButtons">
-                            <a href="#" class="edit" title="Edit" data-toggle="modal" data-target="#movieModal" data-movie-id="<?= $movie['id'] ?>"><i class="material-icons">&#xE254;</i></a>
-                            <a href="#" class="delete" title="Delete" data-toggle="modal" data-target="#deleteMovieModal" data-movie-id="<?= $movie['id'] ?>"><i class="material-icons">&#xE5C9;</i></a>
+                            <a href="javascript:;" class="edit" title="Edit" data-toggle="modal" data-target="#movieModal" data-movie-id="<?= $movie['id'] ?>"><i class="material-icons">&#xE254;</i></a>
+                            <a href="javascript:;" class="delete" title="Delete" data-toggle="modal" data-target="#deleteMovieModal" data-movie-id="<?= $movie['id'] ?>"><i class="material-icons">&#xE5C9;</i></a>
                         </td>
                     </tr>
                 <?php } ?>
@@ -67,20 +78,11 @@ $movies = array_slice($movies, $offset, $moviesPerPage);
                     out of <b><?php echo htmlentities($totalMovies, ENT_QUOTES, 'UTF-8'); ?></b> entries
                 </div>
                 <ul class="pagination">
-                    <?php for ($i = 1; $i <= $totalPages; $i++) { ?>
-                        <?php if ($i === (int)$page) { ?>
-                            <li class="page-item active"><a href="#"
-                                                            class="page-link"><?php echo htmlentities($i, ENT_QUOTES, 'UTF-8'); ?></a>
-                            </li>
-                        <?php } else { ?>
-                            <li class="page-item"><a href="?page=<?php echo (int)$i; ?>"
-                                                     class="page-link"><?php echo htmlentities($i, ENT_QUOTES, 'UTF-8'); ?></a>
-                            </li>
-                        <?php } ?>
-                    <?php } ?>
+                    <?php
+                    echo generatePaginationLinks($page, $totalPages);
+                    ?>
                 </ul>
             </div>
-
         </div>
     </div>
 </div>
@@ -113,7 +115,7 @@ $movies = array_slice($movies, $offset, $moviesPerPage);
                         <label for="actor_name">Actor's Name:</label>
                         <select class="form-control" id="actor_name" name="actor_name[]" multiple required>
                             <?php
-                            $actors = Actor::getAllActors();
+                            $actors = Actor::getListAllActors();
                             foreach ($actors as $actor) {
                                 echo '<option value="' . $actor["id"] . '">'
                                     . $actor["first_name"] . ' ' . $actor["last_name"] . '</option>';

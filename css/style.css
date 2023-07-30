@@ -4,7 +4,6 @@ html {
 
 body {
     font-family: "Poppins", sans-serif;
-    height: 100vh;
 }
 
 a {
@@ -23,6 +22,9 @@ h2 {
     margin: 40px 8px 10px 8px;
     color: #ffffff;
 }
+h6 {
+    color: #072d16;
+}
 
 .wrapper {
     display: flex;
@@ -30,8 +32,9 @@ h2 {
     flex-direction: column;
     justify-content: center;
     width: 100%;
-    min-height: 100%;
+    min-height: 90vh;
     padding: 20px;
+    flex-grow: 1;
 }
 
 #formContent {
@@ -42,7 +45,6 @@ h2 {
     width: 90%;
     max-width: 450px;
     position: relative;
-    padding: 0px;
     -webkit-box-shadow: 0 30px 60px 0 rgba(0, 0, 0, 0.3);
     box-shadow: 0 30px 60px 0 rgba(0, 0, 0, 0.3);
     text-align: center;
@@ -396,7 +398,7 @@ table.table td a.settings {
     color: #2196F3;
 }
 
-table.table td a.delete {
+table.table td a.delete, table.table td a.delete_actor {
     color: #F44336;
 }
 
@@ -514,6 +516,7 @@ table.table .avatar {
 
 .input-group-icon i {
     color: #566787;
+    font-size: 18px;
 }
 
 .btn-secondary {
@@ -549,6 +552,7 @@ table.table .avatar {
 }
 .container-xl {
     position: relative;
+    min-height: 90vh;
 }
 
 .message-output {
@@ -570,4 +574,31 @@ table.table .avatar {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+.footer {
+    background-color: #299be4;
+    padding: 20px;
+    text-align: center;
+    color: #fff;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+}
+
+.footer_inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.footer__link {
+    color: #ffffff;
+    padding: 10px;
+    text-decoration: none;
+    font-size: 18px;
+}
+
+.footer__link:hover {
+    color: #ffffff;
+    background-color: #566787;
 }

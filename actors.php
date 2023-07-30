@@ -11,9 +11,15 @@ switch ($action) {
             $actorId = $_POST["actor_id"];
             Actor::deleteActor($actorId);
 
-            echo "Actor deleted successfully";
+            $response = [
+                'status' => 200,
+                'message' => "Actor deleted successfully"
+            ];
         } else {
-            echo "Invalid request for delete_actor action.";
+            $response = [
+                'status' => 400,
+                'message' => "Invalid request for delete_actor action."
+            ];
         }
         break;
 
@@ -24,15 +30,22 @@ switch ($action) {
             $actor = Actor::getActorById($actorId);
 
             if ($actor) {
-                header('Content-Type: application/json');
-                echo json_encode($actor);
+                $response = [
+                    'data' => $actor,
+                    'status' => 200,
+                    'message' => ""
+                ];
             } else {
-                header('HTTP/1.1 404 Not Found');
-                echo "Actor not found";
+                $response = [
+                    'status' => 404,
+                    'message' => "Actor not found"
+                ];
             }
         } else {
-            header('HTTP/1.1 400 Bad Request');
-            echo "Invalid request for get_actor_data action.";
+            $response = [
+                'status' => 400,
+                'message' => "Invalid request for get_actor_data action."
+            ];
         }
         break;
 
@@ -40,44 +53,62 @@ switch ($action) {
         if ($_SERVER['REQUEST_METHOD'] === "POST" && isset($_POST['searchValue'])) {
             $searchValue = $_POST['searchValue'];
 
-            $results = Actor::searchActorsByName($searchValue);
+            $results = Actor::searchActors($searchValue);
             $totalActors = count($results);
-            $response = array(
-                'actors' => $results,
-                'totalActors' => $totalActors
-            );
-            echo json_encode($response);
+            $response = [
+                'results' => $results,
+                'status' => 200,
+                'message' => ""
+            ];
         } else {
-            echo "Invalid request for search_actors action.";
+            $response = [
+                'status' => 400,
+                'message' => "Invalid request for search_actors action."
+            ];
         }
         break;
 
     case "update_actor":
         if ($_SERVER['REQUEST_METHOD'] === "POST") {
             $actorId = $_POST['actor_id'];
-            $firstName = $_POST['first_name'];
-            $lastName = $_POST['last_name'];
+            $firstName = trim($_POST['first_name']) ?: '';
+            $lastName = trim($_POST['last_name']) ?: '';
 
             if (empty($firstName) || empty($lastName)) {
-                http_response_code(400);
-                echo "Error: Please fill in all required fields.";
-                exit;
-            }
-
-            if (empty($actorId)) {
-                Actor::addActor($firstName, $lastName);
-                echo "Actor added successfully";
+                $response = [
+                    'status' => 400,
+                    'message' => "Error: Please fill in all required fields."
+                ];
             } else {
-                Actor::updateActor($actorId, $firstName, $lastName);
-                echo "Actor updated successfully";
+                if (empty($actorId)) {
+                    Actor::addActor($firstName, $lastName);
+                    $response = [
+                        'status' => 200,
+                        'message' => "Actor added successfully"
+                    ];
+                } else {
+                    Actor::updateActor($actorId, $firstName, $lastName);
+                    $response = [
+                        'status' => 200,
+                        'message' => "Actor updated successfully"
+                    ];
+                }
             }
         } else {
-            echo "Invalid request for update_actor action.";
+            $response = [
+                'status' => 400,
+                'message' => "Invalid request for update_actor action."
+            ];
         }
         break;
 
     default:
-        echo "Invalid action.";
+        $response = [
+            'status' => 400,
+            'message' => "Invalid action."
+        ];
         break;
 }
-?>
+
+header('Content-Type: application/json');
+echo json_encode($response);

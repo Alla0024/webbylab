@@ -2,13 +2,25 @@
 
 class Movie
 {
-    public static function checkMovieExist($title, $releaseYear, $format)
+    public static function checkMovieExist($title, $releaseYear, $format, $excludeMovieId = null)
     {
         $mysqli = dbConnect();
 
         $exist = false;
-        $stmt_check = $mysqli->prepare("SELECT id FROM movies WHERE title = ? AND release_year = ? AND format = ?");
-        $stmt_check->bind_param("sis", $title, $releaseYear, $format);
+        $sql = "SELECT id FROM movies WHERE title = ? AND release_year = ? AND format = ?";
+
+        if ($excludeMovieId !== null) {
+            $sql .= " AND id != ?";
+        }
+
+        $stmt_check = $mysqli->prepare($sql);
+
+        if ($excludeMovieId !== null) {
+            $stmt_check->bind_param("sisi", $title, $releaseYear, $format, $excludeMovieId);
+        } else {
+            $stmt_check->bind_param("sis", $title, $releaseYear, $format);
+        }
+
         $stmt_check->execute();
         $stmt_check->store_result();
 
@@ -56,17 +68,27 @@ class Movie
         }
     }
 
-    public static function getAllMovies()
+    public static function getAllMovies($page = 1, $limit = 10)
     {
         $mysqli = dbConnect();
-        $stmt = $mysqli->prepare("SELECT m.*, GROUP_CONCAT(CONCAT(a.first_name, ' ', a.last_name) SEPARATOR ', ') AS actor_name 
-                                        FROM movies m 
-                                        LEFT JOIN actor_movie am ON m.id = am.movie_id 
-                                        LEFT JOIN actors a ON am.actor_id = a.id 
-                                        GROUP BY m.id
-                                        ORDER BY m.title COLLATE utf8mb4_unicode_ci ASC");
+        $offset = ($page - 1) * $limit;
+
+        $stmt = $mysqli->prepare("SELECT m.*, GROUP_CONCAT(CONCAT(a.first_name, ' ', a.last_name) SEPARATOR ', ') AS actor_names 
+                                    FROM movies m 
+                                    LEFT JOIN actor_movie am ON m.id = am.movie_id 
+                                    LEFT JOIN actors a ON am.actor_id = a.id 
+                                    GROUP BY m.id
+                                    ORDER BY m.title COLLATE utf8mb4_unicode_ci ASC
+                                    LIMIT ?, ?");
+        $stmt->bind_param("ii", $offset, $limit);
         $stmt->execute();
-        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $movies = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $countStmt = $mysqli->prepare("SELECT COUNT(DISTINCT m.id) AS total_count FROM movies m");
+        $countStmt->execute();
+        $totalMovies = $countStmt->get_result()->fetch_assoc()['total_count'];
+
+        return ['total_count' => $totalMovies, 'data' => $movies];
     }
 
     public static function getMovieById($movieId)
@@ -85,9 +107,13 @@ class Movie
         $stmt->bind_param("i", $movieId);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
-
-        $result['actor_ids'] = explode(',', $result['actor_ids']);
-
+        if ($result) {
+            if ($result['actor_ids'] !== NULL) {
+                $result['actor_ids'] = explode(',', $result['actor_ids']);
+            } else {
+                $result['actor_ids'] = [];
+            }
+        }
         return $result;
     }
 
@@ -119,27 +145,68 @@ class Movie
         $stmt->execute();
     }
 
-    public static function searchMoviesAndActorsByTitleOrActor($searchValue)
+    public static function searchMovies($searchValue, $page = 1, $limit = 10)
     {
         $mysqli = dbConnect();
         $searchValue = '%' . $searchValue . '%';
-        $stmt = $mysqli->prepare("SELECT m.id, 
-                                               m.title, 
-                                               m.release_year, 
-                                               m.format, 
-                                               GROUP_CONCAT(CONCAT(a.first_name, ' ', a.last_name) SEPARATOR ', ') AS actor_names
-                                        FROM movies m
-                                        INNER JOIN actor_movie am ON m.id = am.movie_id
-                                        INNER JOIN actors a ON am.actor_id = a.id
-                                        WHERE m.id LIKE ? 
-                                           OR m.title LIKE ? 
-                                           OR CONCAT(a.first_name, ' ', a.last_name) LIKE ? 
-                                           OR m.release_year LIKE ? 
-                                           OR m.format LIKE ?
-                                        GROUP BY m.id, m.title, m.release_year, m.format
-                                        LIMIT 10");
-        $stmt->bind_param("sssss", $searchValue, $searchValue, $searchValue, $searchValue, $searchValue);
+        $offset = ($page - 1) * $limit;
+
+        $countStmt = $mysqli->prepare("SELECT COUNT(DISTINCT m.id) AS total_count
+                                   FROM movies m
+                                   INNER JOIN actor_movie am ON m.id = am.movie_id
+                                   INNER JOIN actors a ON am.actor_id = a.id
+                                   WHERE m.id LIKE ? 
+                                      OR m.title LIKE ? 
+                                      OR CONCAT(a.first_name, ' ', a.last_name) LIKE ? 
+                                      OR m.release_year LIKE ? 
+                                      OR m.format LIKE ?");
+        $countStmt->bind_param("sssss", $searchValue, $searchValue, $searchValue, $searchValue, $searchValue);
+        $countStmt->execute();
+        $totalRows = $countStmt->get_result()->fetch_assoc()['total_count'];
+
+        $stmt = $mysqli->prepare("SELECT m.*,
+                                       GROUP_CONCAT(CONCAT(a.first_name, ' ', a.last_name) SEPARATOR ', ') AS actor_names
+                                FROM movies m
+                                INNER JOIN actor_movie am ON m.id = am.movie_id
+                                INNER JOIN actors a ON am.actor_id = a.id
+                                WHERE m.id LIKE ? 
+                                   OR m.title LIKE ? 
+                                   OR CONCAT(a.first_name, ' ', a.last_name) LIKE ? 
+                                   OR m.release_year LIKE ? 
+                                   OR m.format LIKE ?
+                                GROUP BY m.id, m.title, m.release_year, m.format
+                                 LIMIT ?, ?");
+        $stmt->bind_param("sssssii", $searchValue, $searchValue, $searchValue, $searchValue, $searchValue, $offset, $limit);
         $stmt->execute();
-        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        return ['total_count' => $totalRows, 'data' => $result];
+    }
+    public static function exportMoviesToTxt()
+    {
+        $mysqli = dbConnect();
+
+        $stmt = $mysqli->prepare("SELECT m.title, m.release_year, m.format, GROUP_CONCAT(CONCAT(a.first_name, ' ', a.last_name) SEPARATOR ', ') AS stars 
+                  FROM movies m 
+                  LEFT JOIN actor_movie am ON m.id = am.movie_id 
+                  LEFT JOIN actors a ON am.actor_id = a.id 
+                  GROUP BY m.id");
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if (!$result) {
+            return false;
+        }
+
+        $txtContent = "";
+        while ($row = $result->fetch_assoc()) {
+            $txtContent .= "Title: {$row['title']}\n";
+            $txtContent .= "Release Year: {$row['release_year']}\n";
+            $txtContent .= "Format: {$row['format']}\n";
+            $txtContent .= "Stars: {$row['stars']}\n\n";
+        }
+
+        return $txtContent;
     }
 }

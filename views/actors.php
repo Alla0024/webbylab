@@ -1,13 +1,16 @@
 <?php
-$actors = Actor::getAllActors();
-
 $actorsPerPage = 10;
-$totalActors = count($actors);
-$totalPages = ceil($totalActors / $actorsPerPage);
-
 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+if (isset($_GET['search'])) {
+    $searchValue = $_GET['search'];
+    $actorData = Actor::searchActors($searchValue, $page, $actorsPerPage);
+} else {
+    $actorData = Actor::getAllActors($page, $actorsPerPage);
+}
+$actors = $actorData['data'];
+$totalActors = $actorData['total_count'];
+$totalPages = ceil($totalActors / $actorsPerPage);
 $offset = ($page - 1) * $actorsPerPage;
-$actors = array_slice($actors, $offset, $actorsPerPage);
 ?>
 <div class="container-xl">
     <div class="table-responsive">
@@ -15,13 +18,15 @@ $actors = array_slice($actors, $offset, $actorsPerPage);
             <div class="table-title">
                 <div class="row">
                     <div class="col-sm-5">
-                        <h2>List of actors</h2>
+                        <a href="index.php?action=actors"><h2>List of actors</h2></a>
                     </div>
                     <div class="col-sm-7">
-                        <a href="#" class="btn btn-secondary" data-toggle="modal" data-target="#actorModal"><i class="material-icons">&#xE147;</i> <span>Add New Actor</span></a>
+                        <a href="javascript:;" class="btn btn-secondary" data-toggle="modal" data-target="#actorModal"><i class="material-icons">&#xE147;</i> <span>Add New Actor</span></a>
 
                         <div class="input-group">
-                            <input type="text" name="search" id="searchInput" class="form-control" placeholder="Enter your search term">
+                            <input type="text" name="search" id="searchActorInput" class="form-control"
+                                   placeholder="Enter your search term"
+                                   value="<?php echo isset($searchValue) ? htmlspecialchars($searchValue) : ''; ?>">
                             <span class="input-group-icon"><i class="fas fa-search"></i></span>
                         </div>
 
@@ -44,8 +49,8 @@ $actors = array_slice($actors, $offset, $actorsPerPage);
                         <td><?= $actor['first_name'] ?></td>
                         <td><?= $actor['last_name'] ?></td>
                         <td id="actionButtons">
-                            <a href="#" class="edit_actor" title="Edit" data-toggle="modal" data-target="#actorModal" data-actor-id="<?= $actor['id'] ?>"><i class="material-icons">&#xE254;</i></a>
-                            <a href="#" class="delete_actor" title="Delete" data-toggle="modal" data-target="#deleteActorModal" data-actor-id="<?= $actor['id'] ?>"><i class="material-icons">&#xE5C9;</i></a>
+                            <a href="javascript:;" class="edit_actor" title="Edit" data-toggle="modal" data-target="#actorModal" data-actor-id="<?= $actor['id'] ?>"><i class="material-icons">&#xE254;</i></a>
+                            <a href="javascript:;" class="delete_actor" title="Delete" data-toggle="modal" data-target="#deleteActorModal" data-actor-id="<?= $actor['id'] ?>"><i class="material-icons">&#xE5C9;</i></a>
                         </td>
                     </tr>
                 <?php } ?>
@@ -59,17 +64,9 @@ $actors = array_slice($actors, $offset, $actorsPerPage);
                     out of <b><?php echo htmlentities($totalActors, ENT_QUOTES, 'UTF-8'); ?></b> entries
                 </div>
                 <ul class="pagination">
-                    <?php for ($i = 1; $i <= $totalPages; $i++) { ?>
-                        <?php if ($i === (int)$page) { ?>
-                            <li class="page-item active"><a href="#"
-                                                            class="page-link"><?php echo htmlentities($i, ENT_QUOTES, 'UTF-8'); ?></a>
-                            </li>
-                        <?php } else { ?>
-                            <li class="page-item"><a href="?page=<?php echo (int)$i; ?>"
-                                                     class="page-link"><?php echo htmlentities($i, ENT_QUOTES, 'UTF-8'); ?></a>
-                            </li>
-                        <?php } ?>
-                    <?php } ?>
+                    <?php
+                    echo generatePaginationLinks($page, $totalPages);
+                    ?>
                 </ul>
             </div>
 

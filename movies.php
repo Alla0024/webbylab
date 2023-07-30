@@ -25,6 +25,7 @@ function parseMovieData($movieData)
 
     return $parsedMovies;
 }
+
 function checkValidYear($year)
 {
     $min_year = 1850;
@@ -39,34 +40,44 @@ function checkValidYear($year)
 
 $action = isset($_REQUEST['action']) ? $_REQUEST['action'] : 'default';
 
+$response = [
+    'status' => 400,
+    'message' => "Invalid action."
+];
+
+header('Content-Type: application/json');
+
 switch ($action) {
     case "delete_movie":
         if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["movie_id"])) {
             $movieId = $_POST["movie_id"];
             Movie::deleteMovie($movieId);
 
-            echo "Movie deleted successfully";
-        } else {
-            echo "Invalid request for delete_movie action.";
+            $response = [
+                'status' => 200,
+                'message' => "Movie deleted successfully"
+            ];
         }
         break;
 
     case "get_movie_data":
         if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['movie_id'])) {
-            $movie_id = $_GET['movie_id'];
+            $response = $_GET['movie_id'];
 
-            $movie = Movie::getMovieById($movie_id);
+            $movie = Movie::getMovieById($response);
 
             if ($movie) {
-                header('Content-Type: application/json');
-                echo json_encode($movie);
+                $response = [
+                    'data' => $movie,
+                    'status' => 200,
+                    'message' => ""
+                ];
             } else {
-                header('HTTP/1.1 404 Not Found');
-                echo "Movie not found";
+                $response = [
+                    'status' => 404,
+                    'message' => "Movie not found"
+                ];
             }
-        } else {
-            header('HTTP/1.1 400 Bad Request');
-            echo "Invalid request for get_movie_data action.";
         }
         break;
 
@@ -74,6 +85,10 @@ switch ($action) {
         if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["movie_data"])) {
             $movieData = $_POST["movie_data"];
             $moviesToInsert = parseMovieData($movieData);
+
+            $importMessages = '';
+            $importedMovies = [];
+            $existingMovies = [];
 
             foreach ($moviesToInsert as $movieObj) {
                 if (isset($movieObj["title"]) && isset($movieObj["stars"]) && isset($movieObj["release_year"]) && isset($movieObj["format"])) {
@@ -90,31 +105,63 @@ switch ($action) {
 
                             Actor::insertActorsMovies($actorId, $movieId);
                         }
-                        echo $movieObj["title"].  " imported successfully!<br>";
-                    }else {
-                        echo $movieObj["title"] . " already exists!<br>";
+                        $importedMovies[] = $movieObj["title"];
+                    } else {
+                        $existingMovies[] = $movieObj["title"];
                     }
                 }
+            }
+            if ($importedMovies) {
+                $importedMovies = implode(', ', $importedMovies);
+                $importMessages .= '<h6>Imported successfully: </h6>' . $importedMovies . '<br><br>';
+            }
+            if ($existingMovies) {
+                $existingMovies = implode(', ', $existingMovies);
+                $importMessages .= '<h6>Already exists: </h6>' . $existingMovies . '<br><br>';
 
             }
-        } else {
-            echo "Invalid request for import_movies action.";
+            $response = [
+                'imported_movies' => $importedMovies,
+                'existing_movies' => $existingMovies,
+                'status' => 200,
+                'message' => $importMessages
+            ];
         }
         break;
+    case "export_movies":
+        if ($_SERVER["REQUEST_METHOD"] === "GET") {
+            $response = $_GET['movie_id'];
 
+            $txtContent = Movie::exportMoviesToTxt();
+            if ($txtContent) {
+                header('Content-Type: text/plain');
+                header('Content-Disposition: attachment; filename="movies_data.txt"');
+                echo $txtContent;
+                exit;
+            } else {
+                $response = [
+                    'status' => 400,
+                    'message' => "Export failed."
+                ];
+            }
+
+        }
+        break;
     case "search_actors":
         if ($_SERVER['REQUEST_METHOD'] === "POST" && isset($_POST['searchValue'])) {
             $searchValue = $_POST['searchValue'];
 
-            $results = Movie::searchMoviesAndActorsByTitleOrActor($searchValue);
+            $results = Movie::searchMovies($searchValue);
             $totalMovies = count($results);
-            $response = array(
-                'movies' => $results,
-                'totalMovies' => $totalMovies
-            );
-            echo json_encode($response);
+            $response = [
+                'results' => $results,
+                'status' => 200,
+                'message' => ""];
         } else {
-            echo "Invalid request for search_actors action.";
+            $response = [
+                'status' => 200,
+                'message' => "Invalid request for search_actors action."
+            ];
         }
         break;
 
@@ -126,40 +173,31 @@ switch ($action) {
             $format = $_POST['format'] ?: '';
             $actorId = $_POST['actor_ids'] ?: '';
 
-            if (empty($movieTitle) || empty($releaseYear) || empty($format) || empty($actorId)) {
-                http_response_code(400);
-                echo "Error: Please fill in all required fields.";
-                exit;
-            }
+            $response = [
+                'status' => 400,
+                'message' => "Please fill in all required fields."
+            ];
 
-
-            $valid_year = checkValidYear($releaseYear);
-            if (!$valid_year) {
-                http_response_code(400);
-                echo "Error: Invalid release year. Please enter a year between 1850 and 2023.";
-                exit;
+            if (!empty($movieTitle) && !empty($releaseYear) && !empty($format) && !empty($actorId)) {
+                $valid_year = checkValidYear($releaseYear);
+                if ($valid_year) {
+                    if (!Movie::checkMovieExist($movieTitle, $releaseYear, $format, $movieId)) {
+                        $response['status'] = 200;
+                        if (empty($movieId)) {
+                            Movie::addMovie($movieTitle, $releaseYear, $format, $actorId);
+                            $response['message'] = "Movie added successfully";
+                        } else {
+                            Movie::updateMovie($movieId, $movieTitle, $releaseYear, $format, $actorId);
+                            $response['message'] = "Movie updated successfully";
+                        }
+                    } else {
+                        $response['message'] = "Movie already exists";
+                    }
+                } else {
+                    $response['message'] = "Invalid release year. Please enter a year between 1850 and 2023.";
+                }
             }
-            if (Movie:: checkMovieExist($movieTitle, $releaseYear, $format)){
-                http_response_code(400);
-                echo "Movie already exists";
-                exit;
-            }
-
-            if (empty($movieId)) {
-                Movie::addMovie($movieTitle, $releaseYear, $format, $actorId);
-                echo "Movie added successfully";
-            } else {
-                Movie::updateMovie($movieId, $movieTitle, $releaseYear, $format, $actorId);
-                echo "Movie updated successfully";
-
-            }
-        } else {
-            echo "Invalid request for update_movie action.";
         }
         break;
-
-    default:
-        echo "Invalid action.";
-        break;
 }
-?>
+echo json_encode($response);
